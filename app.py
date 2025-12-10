@@ -1,9 +1,10 @@
 import streamlit as st
 import requests
+import json
 
 # --- CONFIGURATION ---
-# This is your actual Make.com URL
-WEBHOOK_URL = "https://hook.us2.make.com/8x73b7bfbqzjey5zkvp8gs0j28d78pwd"
+# PASTE YOUR CLOUDFLARE WORKER URL BELOW
+WORKER_URL = "https://careermirror-brain.farhanmc011.workers.dev" 
 
 # --- PAGE SETUP ---
 st.set_page_config(page_title="CareerMirror AI", page_icon="👔")
@@ -25,16 +26,27 @@ if st.button("Optimize My Resume", type="primary"):
     else:
         with st.spinner("AI is analyzing keywords..."):
             try:
-                # Send data to Make.com -> Cloudflare AI
+                # Direct connection to Cloudflare
                 payload = {"resume": resume, "jobDescription": job}
-                response = requests.post(WEBHOOK_URL, json=payload)
+                response = requests.post(WORKER_URL, json=payload)
                 
-                # Display Result
+                # Check if successful
                 if response.status_code == 200:
+                    # Parse the JSON response
+                    result_json = response.json()
+                    
+                    # Extract just the text from the "response" or "result" field
+                    if "response" in result_json:
+                        final_text = result_json["response"]
+                    elif "result" in result_json:
+                         final_text = result_json["result"]["response"]
+                    else:
+                        final_text = str(result_json)
+                    
                     st.success("Success! Here is your optimized resume:")
                     st.markdown("---")
-                    st.markdown(response.text) # Displays the AI output
+                    st.markdown(final_text) 
                 else:
-                    st.error("Error connecting to the server.")
+                    st.error(f"Error: {response.status_code} - {response.text}")
             except Exception as e:
-                st.error(f"Something went wrong: {e}")
+                st.error(f"Connection Error: {e}")
