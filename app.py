@@ -1,10 +1,9 @@
 import streamlit as st
 import requests
-import json
 
 # --- CONFIGURATION ---
-# PASTE YOUR CLOUDFLARE WORKER URL BELOW
-WORKER_URL = "https://careermirror-brain.farhanmc011.workers.dev" 
+# Your Direct Cloudflare Brain URL
+WORKER_URL = "https://careermirror-engine1.farhanmc011.workers.dev"
 
 # --- PAGE SETUP ---
 st.set_page_config(page_title="CareerMirror AI", page_icon="👔")
@@ -32,21 +31,21 @@ if st.button("Optimize My Resume", type="primary"):
                 
                 # Check if successful
                 if response.status_code == 200:
-                    # Parse the JSON response
                     result_json = response.json()
                     
-                    # Extract just the text from the "response" or "result" field
-                    if "response" in result_json:
+                    # Logic to find the text inside the JSON
+                    if "result" in result_json and "response" in result_json["result"]:
+                        final_text = result_json["result"]["response"]
+                    elif "response" in result_json:
                         final_text = result_json["response"]
-                    elif "result" in result_json:
-                         final_text = result_json["result"]["response"]
                     else:
                         final_text = str(result_json)
                     
                     st.success("Success! Here is your optimized resume:")
                     st.markdown("---")
-                    st.markdown(final_text) 
+                    st.markdown(final_text)
                 else:
-                    st.error(f"Error: {response.status_code} - {response.text}")
+                    st.error(f"Error from Brain: {response.status_code}")
+                    st.write(response.text)
             except Exception as e:
                 st.error(f"Connection Error: {e}")
