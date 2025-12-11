@@ -2,142 +2,263 @@ import streamlit as st
 import requests
 import pandas as pd
 import json
-import re # Added for smart searching
+import re
+import time
+from datetime import datetime
 
-# --- CONFIGURATION ---
+# --- ⚙️ CONFIGURATION ---
+# PASTE YOUR CLOUDFLARE WORKER URL HERE
 WORKER_URL = "https://shop-brain.farhanmc011.workers.dev" 
 
-# --- PAGE CONFIG ---
-st.set_page_config(page_title="Omni-Agent v2", page_icon="⚡", layout="wide")
+# --- 🎨 PAGE CONFIG & CSS ---
+st.set_page_config(page_title="Omni-Agent v3", page_icon="⚡", layout="wide")
 
-# --- v2.0 LUXURY CSS ---
 st.markdown("""
 <style>
-    .stApp { background-color: #0E1117; color: #FFFFFF; }
-    .metric-box {
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+    /* MAIN THEME */
+    .stApp {
+        background-color: #050505;
+        color: #ffffff;
+    }
+    
+    /* SIDEBAR */
+    section[data-testid="stSidebar"] {
+        background-color: #0a0a0a;
+        border-right: 1px solid #1f1f1f;
+    }
+    
+    /* METRIC CARDS */
+    .metric-card {
+        background: linear-gradient(145deg, #111111, #0a0a0a);
+        border: 1px solid #222;
         padding: 20px;
-        border-radius: 15px;
+        border-radius: 12px;
         text-align: center;
-        backdrop-filter: blur(10px);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
     }
-    .metric-box h3 { color: #888888 !important; font-size: 14px; margin-bottom: 5px; }
-    .metric-box h2 { color: #00FF94 !important; font-size: 32px; font-weight: 700; margin: 0; }
+    .metric-card h3 { color: #666; font-size: 12px; text-transform: uppercase; margin-bottom: 5px; letter-spacing: 1px;}
+    .metric-card h2 { color: #fff; font-size: 28px; font-weight: 700; margin: 0; }
+    .metric-card span { font-size: 14px; font-weight: bold; }
+    
+    /* NEON TEXT */
+    .neon-green { color: #00FF94 !important; }
+    .neon-blue { color: #00E5FF !important; }
+    .neon-purple { color: #BD00FF !important; }
+
+    /* BUTTONS */
     .stButton>button {
-        background: linear-gradient(45deg, #00C853, #009688);
-        color: white; border: none; border-radius: 8px; font-weight: bold;
+        background-color: #1f1f1f;
+        color: white;
+        border: 1px solid #333;
+        border-radius: 6px;
+        transition: all 0.3s;
     }
+    .stButton>button:hover {
+        border-color: #00FF94;
+        color: #00FF94;
+    }
+    
+    /* HIDE STREAMLIT UI */
     #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
-# --- SESSION STATE ---
+# --- 📦 SESSION STATE ---
 if "logged_in" not in st.session_state: st.session_state.logged_in = False
 if "user_config" not in st.session_state: st.session_state.user_config = {}
 if "orders" not in st.session_state: st.session_state.orders = []
+if "messages" not in st.session_state: st.session_state.messages = [{"role": "assistant", "content": "System Ready. Waiting for customer input."}]
 
 # ==========================================
-# 🔐 LOGIN SCREEN
+# 🔐 1. LOGIN SYSTEM (The Gate)
 # ==========================================
-if not st.session_state.logged_in:
-    c1, c2, c3 = st.columns([1,2,1])
+def login_page():
+    c1, c2, c3 = st.columns([1, 1, 1])
     with c2:
-        st.markdown("<h1 style='text-align: center; color: white;'>⚡ OMNI-AGENT v2</h1>", unsafe_allow_html=True)
-        with st.form("login_form"):
-            username = st.text_input("Access ID")
-            password = st.text_input("Secret Key", type="password")
-            if st.form_submit_button("ENTER DASHBOARD"):
+        st.markdown("<br><br><br>", unsafe_allow_html=True)
+        st.markdown("<h1 style='text-align: center; font-size: 50px;'>⚡</h1>", unsafe_allow_html=True)
+        st.markdown("<h2 style='text-align: center;'>OMNI-AGENT v3.0</h2>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; color: #666;'>Enterprise AI Operating System</p>", unsafe_allow_html=True)
+        
+        with st.form("login"):
+            username = st.text_input("Client ID", placeholder="e.g. demo")
+            password = st.text_input("Access Key", type="password", placeholder="••••••")
+            
+            if st.form_submit_button("AUTHENTICATE"):
                 try:
-                    user_data = st.secrets["users"].get(username)
-                    if user_data and user_data["password"] == password:
+                    user = st.secrets["users"].get(username)
+                    if user and user["password"] == password:
                         st.session_state.logged_in = True
-                        st.session_state.user_config = user_data
+                        st.session_state.user_config = user
                         st.rerun()
                     else:
-                        st.error("⛔ Access Denied")
+                        st.error("⛔ ACCESS DENIED")
                 except:
-                    st.error("System Error: Check Secrets.")
+                    st.error("⚠️ SYSTEM ERROR: Database not found.")
 
 # ==========================================
-# ⚡ DASHBOARD
+# 🖥️ 2. MAIN APPLICATION (The Views)
 # ==========================================
-else:
-    client_name = st.session_state.user_config.get("name", "Client")
-    saved_feed = st.session_state.user_config.get("feed_url", "")
-    saved_webhook = st.session_state.user_config.get("webhook_url", "")
-    saved_policy = st.session_state.user_config.get("policy", "Standard Policy")
-
-    # HEADER
-    c1, c2 = st.columns([6, 1])
-    with c1: st.title(f"⚡ Command Center: {client_name}")
-    with c2:
+def main_app():
+    # --- SIDEBAR NAVIGATION ---
+    with st.sidebar:
+        st.markdown("## ⚡ OMNI v3")
+        st.caption(f"Logged in as: {st.session_state.user_config.get('name')}")
+        st.markdown("---")
+        
+        menu = st.radio("MENU", ["📊 Dashboard", "💬 Live Inbox", "📦 Order Manager", "🔌 Integration"], label_visibility="collapsed")
+        
+        st.markdown("---")
         if st.button("LOGOUT"):
             st.session_state.logged_in = False
             st.rerun()
 
-    # METRICS
-    m1, m2, m3, m4 = st.columns(4)
-    with m1: st.markdown(f"""<div class="metric-box"><h3>Revenue</h3><h2>${sum([o.get('quantity', 1) * 20 for o in st.session_state.orders])}</h2></div>""", unsafe_allow_html=True)
-    with m2: st.markdown(f"""<div class="metric-box"><h3>Orders</h3><h2>{len(st.session_state.orders)}</h2></div>""", unsafe_allow_html=True)
-    with m3: st.markdown(f"""<div class="metric-box"><h3>Feed Status</h3><h2 style="color:#00FF94 !important;">SYNCED</h2></div>""", unsafe_allow_html=True)
-    with m4: st.markdown(f"""<div class="metric-box"><h3>AI Model</h3><h2>Llama 3</h2></div>""", unsafe_allow_html=True)
+    # --- VIEW 1: DASHBOARD ---
+    if menu == "📊 Dashboard":
+        st.title("📊 Executive Overview")
+        st.markdown("Real-time performance metrics.")
+        
+        # KEY METRICS
+        total_rev = sum([o.get('quantity', 1) * 20 for o in st.session_state.orders])
+        total_orders = len(st.session_state.orders)
+        
+        c1, c2, c3, c4 = st.columns(4)
+        with c1: st.markdown(f"""<div class="metric-card"><h3>Revenue</h3><h2 class="neon-green">${total_rev}</h2></div>""", unsafe_allow_html=True)
+        with c2: st.markdown(f"""<div class="metric-card"><h3>Total Orders</h3><h2 class="neon-blue">{total_orders}</h2></div>""", unsafe_allow_html=True)
+        with c3: st.markdown(f"""<div class="metric-card"><h3>Conversion</h3><h2 class="neon-purple">{min(total_orders * 10, 100)}%</h2></div>""", unsafe_allow_html=True)
+        with c4: st.markdown(f"""<div class="metric-card"><h3>System Status</h3><h2 style="color:#00FF94;">ONLINE</h2></div>""", unsafe_allow_html=True)
 
-    st.markdown("###")
+        st.markdown("###")
+        
+        # CHART (Visuals make it look expensive)
+        st.subheader("📈 Sales Velocity")
+        if total_orders > 0:
+            chart_data = pd.DataFrame({
+                "Order": [f"Order #{i+1}" for i in range(total_orders)],
+                "Value": [20] * total_orders
+            })
+            st.bar_chart(chart_data, x="Order", y="Value", color="#00FF94")
+        else:
+            st.info("Waiting for first sale to generate analytics...")
 
-    # CHAT TAB
-    st.caption("Test how the bot replies to Instagram DMs in real-time.")
-    
-    if "messages" not in st.session_state:
-        st.session_state.messages = [{"role": "assistant", "content": "Yo! Checking the inventory..."}]
+    # --- VIEW 2: LIVE INBOX (The Simulator) ---
+    elif menu == "💬 Live Inbox":
+        st.title("💬 Live Customer Simulator")
+        st.caption("Test your AI Agent's responses in real-time.")
+        
+        # Chat Container
+        chat_container = st.container(height=500)
+        
+        # Render History
+        with chat_container:
+            for msg in st.session_state.messages:
+                with st.chat_message(msg["role"]):
+                    st.write(msg["content"])
 
-    for msg in st.session_state.messages:
-        with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
-
-    if prompt := st.chat_input("Type a DM..."):
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
-
-        with st.spinner("⚡ AI Thinking..."):
-            try:
-                # FETCH DATA
-                catalog_str = "No Feed."
-                if saved_feed:
-                    try:
-                        df = pd.read_csv(saved_feed)
-                        catalog_str = df.to_string(index=False)
-                    except: pass
-
-                payload = { "store_policy": saved_policy, "product_catalog": catalog_str, "user_question": prompt }
-                response = requests.post(WORKER_URL, json=payload)
+        # Input
+        if prompt := st.chat_input("Type a message as a customer..."):
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            with chat_container:
+                with st.chat_message("user"): st.write(prompt)
                 
-                if response.status_code == 200:
-                    data = response.json()
-                    # 🔴 SMART PARSING LOGIC 🔴
-                    raw_text = data.get("result", {}).get("response", "") or data.get("response", "") or str(data)
+                with st.chat_message("assistant"):
+                    message_placeholder = st.empty()
+                    message_placeholder.markdown("⚡ *AI is processing...*")
                     
-                    # Regex: Find the first thing that looks like { ... }
-                    json_match = re.search(r'\{.*\}', raw_text, re.DOTALL)
-                    
-                    if json_match:
-                        clean_json = json_match.group(0)
-                        try:
-                            ai_action = json.loads(clean_json)
-                            msg_text = ai_action.get("message", "Processed.")
+                    try:
+                        # GET CONFIG
+                        config = st.session_state.user_config
+                        
+                        # FETCH FEED (If available)
+                        catalog_str = "No Feed."
+                        if config.get("feed_url"):
+                            try:
+                                df = pd.read_csv(config.get("feed_url"))
+                                catalog_str = df.to_string(index=False)
+                            except: pass
+                        
+                        # CALL WORKER
+                        payload = {
+                            "store_policy": config.get("policy", "Standard"),
+                            "product_catalog": catalog_str,
+                            "user_question": prompt
+                        }
+                        response = requests.post(WORKER_URL, json=payload)
+                        
+                        if response.status_code == 200:
+                            data = response.json()
+                            raw_text = data.get("result", {}).get("response", "") or data.get("response", "") or str(data)
                             
-                            if ai_action.get("action") == "CREATE_ORDER":
-                                st.success(f"🚀 ORDER SIGNAL SENT: {ai_action.get('item')}")
-                                st.session_state.orders.append(ai_action)
-                                if saved_webhook: requests.post(saved_webhook, json=ai_action)
-                            
-                            with st.chat_message("assistant"): st.markdown(msg_text)
-                            st.session_state.messages.append({"role": "assistant", "content": msg_text})
-                        except: st.error(f"JSON Parse Error: {raw_text}")
-                    else:
-                        st.error(f"AI failed to produce JSON. Raw: {raw_text}")
-                else:
-                    st.error("Server Error")
-            except Exception as e:
-                st.error(f"Connection Error: {e}")
+                            # SMART PARSE
+                            json_match = re.search(r'\{.*\}', raw_text, re.DOTALL)
+                            if json_match:
+                                clean_json = json_match.group(0)
+                                try:
+                                    ai_action = json.loads(clean_json)
+                                    final_msg = ai_action.get("message", "...")
+                                    
+                                    # HANDLE ORDER
+                                    if ai_action.get("action") == "CREATE_ORDER":
+                                        st.toast(f"🚀 ORDER RECEIVED: {ai_action.get('item')}", icon="✅")
+                                        # Add Timestamp
+                                        ai_action["time"] = datetime.now().strftime("%H:%M:%S")
+                                        st.session_state.orders.append(ai_action)
+                                        
+                                        # Webhook Trigger
+                                        if config.get("webhook_url"):
+                                            requests.post(config.get("webhook_url"), json=ai_action)
+                                    
+                                    message_placeholder.write(final_msg)
+                                    st.session_state.messages.append({"role": "assistant", "content": final_msg})
+                                except:
+                                    message_placeholder.error("JSON Parsing Error")
+                            else:
+                                message_placeholder.write(raw_text) # Fallback if no JSON
+                        else:
+                            message_placeholder.error("Server Error")
+                    except Exception as e:
+                        message_placeholder.error(f"Connection Failed: {e}")
+
+    # --- VIEW 3: ORDER MANAGER ---
+    elif menu == "📦 Order Manager":
+        st.title("📦 Order Management")
+        st.markdown("All orders generated by the AI.")
+        
+        if st.session_state.orders:
+            # Convert JSON list to DataFrame for a nice table
+            df_orders = pd.DataFrame(st.session_state.orders)
+            # Reorder columns if possible
+            cols = ["time", "item", "quantity", "action"]
+            available_cols = [c for c in cols if c in df_orders.columns]
+            st.dataframe(df_orders[available_cols], use_container_width=True, hide_index=True)
+        else:
+            st.info("No orders received yet.")
+
+    # --- VIEW 4: INTEGRATION ---
+    elif menu == "🔌 Integration":
+        st.title("🔌 Integration Hub")
+        st.markdown("Connect your AI to the world.")
+        
+        t1, t2 = st.tabs(["Website Widget", "Data Source"])
+        
+        with t1:
+            st.subheader("Website Installation")
+            st.code(f"""<script>
+  window.BOT_CONFIG = {{
+    workerUrl: "{WORKER_URL}",
+    policy: "{st.session_state.user_config.get('policy', '')}"
+  }};
+</script>
+<script src="https://cdn.jsdelivr.net/gh/farhanmc011/chat-widget@main/widget.js" async></script>""", language="html")
+            st.caption("Copy and paste this into your HTML/Shopify Theme.")
+
+        with t2:
+            st.subheader("Live Data")
+            st.text_input("Current Feed URL", value=st.session_state.user_config.get("feed_url", ""), disabled=True)
+            st.caption("To update this, contact your Account Manager.")
+
+# --- 🚀 RUN APP ---
+if st.session_state.logged_in:
+    main_app()
+else:
+    login_page()
