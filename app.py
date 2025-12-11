@@ -4,28 +4,67 @@ import pandas as pd
 import json
 
 # --- CONFIGURATION ---
-WORKER_URL = "https://shop-brain.farhanmc011.workers.dev" 
+WORKER_URL = "https://shop-brain.farhanmc011.workers.dev" # Check your URL!
 
 # --- PAGE CONFIG ---
-st.set_page_config(page_title="Omni-Agent Login", page_icon="🔒", layout="centered")
+st.set_page_config(page_title="Omni-Agent v2", page_icon="⚡", layout="wide")
 
-# --- CSS FOR LOGIN & DASHBOARD ---
+# --- v2.0 LUXURY CSS ---
 st.markdown("""
 <style>
-    .metric-box {
-        background-color: #ffffff;
-        padding: 20px;
-        border-radius: 10px;
-        border-left: 5px solid #00cc66;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        text-align: center;
+    /* 1. FORCE DARK THEME BACKGROUND */
+    .stApp {
+        background-color: #0E1117;
+        color: #FFFFFF;
     }
-    .metric-box h3 { color: #666666 !important; margin: 0; font-size: 16px; }
-    .metric-box h2 { color: #000000 !important; margin: 0; font-size: 28px; font-weight: bold; }
-    .stButton>button { width: 100%; border-radius: 8px; font-weight: bold; }
-    /* Hide Streamlit Menu for Clients */
+    
+    /* 2. GLASSMORPHISM CARDS */
+    .metric-box {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 20px;
+        border-radius: 15px;
+        text-align: center;
+        backdrop-filter: blur(10px);
+        transition: transform 0.2s;
+    }
+    .metric-box:hover {
+        transform: translateY(-5px);
+        border-color: #00FF94;
+    }
+    .metric-box h3 {
+        color: #888888 !important;
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 5px;
+    }
+    .metric-box h2 {
+        color: #00FF94 !important; /* Neon Green */
+        font-size: 32px;
+        font-weight: 700;
+        margin: 0;
+    }
+    
+    /* 3. BUTTONS */
+    .stButton>button {
+        background: linear-gradient(45deg, #00C853, #009688);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        transition: all 0.3s ease;
+    }
+    .stButton>button:hover {
+        box-shadow: 0 0 15px rgba(0, 255, 148, 0.4);
+    }
+
+    /* 4. HIDE STREAMLIT BRANDING */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
+    header {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -38,97 +77,95 @@ if "orders" not in st.session_state:
     st.session_state.orders = []
 
 # ==========================================
-# 🔐 1. THE LOGIN SCREEN
+# 🔐 LOGIN SCREEN (v2.0)
 # ==========================================
 if not st.session_state.logged_in:
-    st.title("🔒 Client Portal")
-    st.caption("Please log in to manage your AI Agent.")
-    
-    with st.form("login_form"):
-        username = st.text_input("Username")
-        password = st.text_input("Password", type="password")
-        submitted = st.form_submit_button("Log In")
+    c1, c2, c3 = st.columns([1,2,1])
+    with c2:
+        st.markdown("<h1 style='text-align: center; color: white;'>⚡ OMNI-AGENT v2</h1>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; color: #888;'>Enterprise AI for E-commerce</p>", unsafe_allow_html=True)
+        st.markdown("---")
         
-        if submitted:
-            # CHECK CREDENTIALS FROM SECRETS (The Concierge DB)
-            try:
-                # Look for the user in the secrets file
-                user_data = st.secrets["users"].get(username)
-                
-                if user_data and user_data["password"] == password:
-                    st.session_state.logged_in = True
-                    st.session_state.user_config = user_data
-                    st.success("Login Successful!")
-                    st.rerun()
-                else:
-                    st.error("Invalid Username or Password")
-            except Exception as e:
-                st.error("System Error: Setup Secrets first.")
-    
-    st.info("Need an account? Contact Support to set up your Agent.")
+        with st.form("login_form"):
+            username = st.text_input("Access ID")
+            password = st.text_input("Secret Key", type="password")
+            submitted = st.form_submit_button("ENTER DASHBOARD")
+            
+            if submitted:
+                # CHECK SECRETS
+                try:
+                    user_data = st.secrets["users"].get(username)
+                    if user_data and user_data["password"] == password:
+                        st.session_state.logged_in = True
+                        st.session_state.user_config = user_data
+                        st.rerun()
+                    else:
+                        st.error("⛔ Access Denied")
+                except:
+                    st.error("System Error: Check Secrets.")
 
 # ==========================================
-# 🛍️ 2. THE CLIENT DASHBOARD (PROTECTED)
+# ⚡ DASHBOARD (v2.0)
 # ==========================================
 else:
-    # Switch Layout to Wide for Dashboard
-    # (Streamlit doesn't allow dynamic layout change easily, so we just use full width containers)
-    
-    # LOAD CLIENT'S SAVED DATA (The Persistence!)
-    client_name = st.session_state.user_config.get("name", "Store Owner")
+    # DATA LOADING
+    client_name = st.session_state.user_config.get("name", "Client")
     saved_feed = st.session_state.user_config.get("feed_url", "")
     saved_webhook = st.session_state.user_config.get("webhook_url", "")
     saved_policy = st.session_state.user_config.get("policy", "Standard Policy")
 
-    # --- HEADER ---
-    c1, c2 = st.columns([3, 1])
+    # HEADER
+    c1, c2 = st.columns([6, 1])
     with c1:
-        st.title(f"👋 Welcome, {client_name}")
+        st.title(f"⚡ Command Center: {client_name}")
     with c2:
-        if st.button("Log Out"):
+        if st.button("LOGOUT"):
             st.session_state.logged_in = False
             st.rerun()
 
-    # --- METRICS ---
-    m1, m2, m3 = st.columns(3)
+    # METRICS ROW
+    m1, m2, m3, m4 = st.columns(4)
     with m1:
-        st.markdown(f"""<div class="metric-box"><h3>💰 Sales</h3><h2>${sum([o.get('quantity', 1) * 20 for o in st.session_state.orders])}</h2></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="metric-box"><h3>Revenue</h3><h2>${sum([o.get('quantity', 1) * 20 for o in st.session_state.orders])}</h2></div>""", unsafe_allow_html=True)
     with m2:
-        st.markdown(f"""<div class="metric-box"><h3>📦 Orders</h3><h2>{len(st.session_state.orders)}</h2></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="metric-box"><h3>Orders</h3><h2>{len(st.session_state.orders)}</h2></div>""", unsafe_allow_html=True)
     with m3:
-        st.markdown(f"""<div class="metric-box"><h3>⚡ Feed Status</h3><h2 style="color:green !important;">Active</h2></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="metric-box"><h3>Feed Status</h3><h2 style="color:#00FF94 !important;">SYNCED</h2></div>""", unsafe_allow_html=True)
+    with m4:
+        st.markdown(f"""<div class="metric-box"><h3>AI Model</h3><h2>Llama 3</h2></div>""", unsafe_allow_html=True)
 
     st.markdown("###")
 
-    # --- TABS ---
-    tab_sim, tab_settings = st.tabs(["💬 Live Simulator", "⚙️ My Settings"])
+    # TABS
+    tab1, tab2 = st.tabs(["💬 INSTAGRAM SIMULATOR", "⚙️ CONFIGURATION"])
 
-    # --- TAB 1: SIMULATOR ---
-    with tab_sim:
-        # Initialize Chat
+    with tab1:
+        st.caption("Test how the bot replies to Instagram DMs in real-time.")
+        
+        # Chat Interface
         if "messages" not in st.session_state:
-            st.session_state.messages = [{"role": "assistant", "content": f"Hi! I'm the AI for {client_name}. I've loaded your products."}]
+            st.session_state.messages = [{"role": "assistant", "content": "Yo! Checking the inventory..."}]
 
         for msg in st.session_state.messages:
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
 
-        if prompt := st.chat_input("Test your bot..."):
+        if prompt := st.chat_input("Type a DM (e.g., 'price for black hoodie?')..."):
             st.session_state.messages.append({"role": "user", "content": prompt})
             with st.chat_message("user"):
                 st.markdown(prompt)
 
-            with st.spinner("AI is checking your feed..."):
+            with st.spinner("⚡ AI Thinking..."):
                 try:
-                    # FETCH LIVE DATA (Using the SAVED URL)
+                    # LIVE FETCH
                     if saved_feed:
                         try:
                             df = pd.read_csv(saved_feed)
                             catalog_str = df.to_string(index=False)
                         except:
-                            catalog_str = "Error reading feed."
+                            catalog_str = "Feed Error."
                     else:
-                        catalog_str = "No feed connected."
+                        catalog_str = "No Feed."
 
                     payload = {
                         "store_policy": saved_policy, 
@@ -147,10 +184,8 @@ else:
                             msg_text = ai_action.get("message", "Processed.")
                             
                             if ai_action.get("action") == "CREATE_ORDER":
-                                st.balloons()
-                                st.success(f"✅ NEW ORDER: {ai_action.get('item')}")
+                                st.success(f"🚀 ORDER SIGNAL SENT: {ai_action.get('item')}")
                                 st.session_state.orders.append(ai_action)
-                                # Trigger Webhook (Using the SAVED URL)
                                 if saved_webhook:
                                     requests.post(saved_webhook, json=ai_action)
                             
@@ -158,19 +193,11 @@ else:
                                 st.markdown(msg_text)
                             st.session_state.messages.append({"role": "assistant", "content": msg_text})
                         except:
-                            st.error("Bot is thinking...")
+                            st.error("AI Error.")
                 except Exception as e:
-                    st.error(f"Error: {e}")
+                    st.error(f"Connection Error: {e}")
 
-    # --- TAB 2: SETTINGS (READ ONLY FOR CLIENT) ---
-    with tab_settings:
-        st.info("ℹ️ These settings are managed by your Account Manager. Contact support to update.")
+    with tab2:
+        st.info("🔒 Secure Configuration (Managed by Admin)")
         st.text_input("Live Feed URL", value=saved_feed, disabled=True)
         st.text_input("Webhook URL", value=saved_webhook, disabled=True)
-        st.text_area("Store Policy", value=saved_policy, disabled=True)
-        
-        # WIDGET CODE GENERATOR
-        st.subheader("🔌 Your Website Code")
-        code = f"""<script>window.BOT_CONFIG={{workerUrl:"{WORKER_URL}",policy:"{saved_policy[:50]}..."}}</script>
-<script src="https://cdn.jsdelivr.net/gh/farhanmc011/chat-widget@main/widget.js" async></script>"""
-        st.code(code, language="html")
