@@ -3,7 +3,7 @@ import requests
 import json
 
 # --- CONFIGURATION ---
-WORKER_URL = "https://llm-chat-app-template.farhanmc011.workers.dev" # Your Brain
+WORKER_URL = "https://shop-brain.farhanmc011.workers.dev" # Your Brain
 
 st.set_page_config(page_title="ShopSales Admin", page_icon="⚙️", layout="wide")
 
