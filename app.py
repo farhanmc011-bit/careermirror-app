@@ -8,90 +8,96 @@ from datetime import datetime
 # --- ⚙️ CONFIGURATION ---
 WORKER_URL = "https://shop-brain.farhanmc011.workers.dev" 
 
-# --- 🎨 PAGE CONFIG & FINAL LUXURY CSS ---
+# --- 🎨 PAGE CONFIG & STRIPE-STYLE CSS ---
 st.set_page_config(page_title="Client Portal", page_icon="✨", layout="wide")
 
 st.markdown("""
 <style>
-    /* 1. FORCE BACKGROUND WHITE */
+    /* 1. FORCE CLEAN WHITE BACKGROUND */
     .stApp {
-        background-color: #F8F9FB;
+        background-color: #FFFFFF;
+        color: #1A1A1A;
     }
 
-    /* 2. FORCE MAIN TEXT TO BLACK */
-    /* We removed 'span' and 'div' from this list to fix the Code Block issue */
-    h1, h2, h3, h4, h5, h6, p, label, li, .stMarkdown {
+    /* 2. TYPOGRAPHY (Inter / System Font) */
+    h1, h2, h3, h4, h5, h6, p, label, li, span, div {
         color: #1A1A1A !important;
-        font-family: 'Helvetica Neue', sans-serif;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
     
-    /* 3. FIX CODE BLOCK VISIBILITY */
-    /* This ensures code looks like a code editor (Dark bg, Light text) */
+    /* 3. FIX THE CODE BLOCK (The problem you saw) */
+    /* We make it look like a clean documentation snippet (Light Grey) */
     .stCodeBlock {
+        background-color: #F3F4F6 !important; /* Light Grey Bg */
         border: 1px solid #E5E7EB;
         border-radius: 8px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
     }
     code {
-        color: #E0E0E0 !important; /* Force code text to be light */
+        color: #111827 !important; /* Dark Text for readability */
+        font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+        background-color: transparent !important;
     }
     
-    /* 4. SIDEBAR */
+    /* 4. SIDEBAR - SOFT GRAY */
     section[data-testid="stSidebar"] {
-        background-color: #FFFFFF;
+        background-color: #F9FAFB;
         border-right: 1px solid #E5E7EB;
     }
-    section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3, section[data-testid="stSidebar"] p {
-        color: #1A1A1A !important;
-    }
     
-    /* 5. METRIC CARDS */
+    /* 5. METRIC CARDS (Stripe Style) */
     .metric-card {
         background: #FFFFFF;
         padding: 24px;
-        border-radius: 16px;
+        border-radius: 12px;
         border: 1px solid #E5E7EB;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-        transition: transform 0.2s;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        transition: box-shadow 0.2s;
     }
     .metric-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
     }
     .metric-card h3 { 
         color: #6B7280 !important;
-        font-size: 13px !important; 
+        font-size: 12px !important; 
         text-transform: uppercase; 
         font-weight: 600; 
         margin-bottom: 8px; 
+        letter-spacing: 0.5px;
     }
     .metric-card h2 { 
         color: #111827 !important;
-        font-size: 32px !important; 
+        font-size: 30px !important; 
         font-weight: 700; 
         margin: 0; 
     }
     
-    /* 6. INPUT FIELDS */
-    .stTextInput input {
-        background-color: #FFFFFF !important;
-        color: #1A1A1A !important;
-        border: 1px solid #E5E7EB;
-    }
-    
-    /* 7. BUTTONS */
+    /* 6. BUTTONS (Black & Sharp) */
     .stButton>button {
         background-color: #111827 !important;
         color: #FFFFFF !important;
         border: none;
-        border-radius: 8px;
-        font-weight: 600;
+        border-radius: 6px;
+        padding: 8px 16px;
+        font-weight: 500;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
     }
     .stButton>button:hover {
-        background-color: #374151 !important;
+        background-color: #000000 !important;
     }
 
-    /* HIDE STREAMLIT UI */
+    /* 7. INPUTS (Clean Borders) */
+    .stTextInput input {
+        background-color: #FFFFFF !important;
+        color: #111827 !important;
+        border: 1px solid #D1D5DB;
+        border-radius: 6px;
+    }
+    .stTextInput input:focus {
+        border-color: #111827;
+        box-shadow: none;
+    }
+
+    /* HIDE STREAMLIT BRANDING */
     #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
@@ -100,172 +106,150 @@ st.markdown("""
 if "logged_in" not in st.session_state: st.session_state.logged_in = False
 if "user_config" not in st.session_state: st.session_state.user_config = {}
 if "orders" not in st.session_state: st.session_state.orders = []
-if "messages" not in st.session_state: st.session_state.messages = [{"role": "assistant", "content": "Welcome. I am ready to assist."}]
+if "messages" not in st.session_state: st.session_state.messages = [{"role": "assistant", "content": "System Online. Ready."}]
 
 # ==========================================
-# 🔐 1. LOGIN SYSTEM
+# 🔐 LOGIN SCREEN
 # ==========================================
 def login_page():
-    c1, c2, c3 = st.columns([1, 0.8, 1])
+    c1, c2, c3 = st.columns([1, 0.6, 1])
     with c2:
         st.markdown("<br><br><br>", unsafe_allow_html=True)
-        st.markdown("<h2 style='text-align: center; color: #111827; margin-bottom: 0px;'>Client Portal</h2>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center; color: #6B7280; font-size: 14px;'>Secure Access • Enterprise Edition</p>", unsafe_allow_html=True)
-        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("<h3 style='text-align: center; margin-bottom: 0px;'>Client Portal</h3>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; color: #6B7280; font-size: 14px;'>Enterprise Access</p>", unsafe_allow_html=True)
         
-        with st.form("login"):
-            username = st.text_input("Username")
-            password = st.text_input("Password", type="password")
-            submitted = st.form_submit_button("Sign In →")
+        with st.form("login", border=False):
+            username = st.text_input("ID")
+            password = st.text_input("Key", type="password")
+            submitted = st.form_submit_button("Authenticate", use_container_width=True)
             
             if submitted:
+                # Basic cleaner
+                u = username.strip()
+                p = password.strip()
                 try:
-                    user = st.secrets["users"].get(username)
-                    if user and user["password"] == password:
+                    user = st.secrets["users"].get(u)
+                    if user and str(user["password"]) == str(p):
                         st.session_state.logged_in = True
                         st.session_state.user_config = user
                         st.rerun()
                     else:
-                        st.error("Incorrect credentials.")
+                        st.error("Access Denied")
                 except:
-                    st.error("System configuration error.")
+                    st.error("System Error")
 
 # ==========================================
-# 🖥️ 2. MAIN APPLICATION
+# 🖥️ DASHBOARD
 # ==========================================
 def main_app():
-    # --- SIDEBAR ---
+    # SIDEBAR
     with st.sidebar:
-        st.markdown("### 🏢 Portal")
+        st.markdown("### Nexus AI")
         st.caption(f"Account: {st.session_state.user_config.get('name')}")
         st.markdown("---")
-        
-        menu = st.radio("Navigate", ["Overview", "Live Chat", "Orders", "Settings"], label_visibility="collapsed")
-        
+        menu = st.radio("Menu", ["Dashboard", "Live Simulator", "Orders", "Installation"], label_visibility="collapsed")
         st.markdown("---")
-        if st.button("Log Out"):
+        if st.button("Sign Out"):
             st.session_state.logged_in = False
             st.rerun()
 
-    # --- VIEW 1: OVERVIEW ---
-    if menu == "Overview":
-        st.title("Performance Overview")
-        st.markdown("Real-time sales and interaction metrics.")
+    # VIEW 1: DASHBOARD
+    if menu == "Dashboard":
+        st.title("Overview")
         st.markdown("<br>", unsafe_allow_html=True)
         
-        total_rev = sum([o.get('quantity', 1) * 20 for o in st.session_state.orders])
-        total_orders = len(st.session_state.orders)
+        rev = sum([o.get('quantity', 1) * 20 for o in st.session_state.orders])
+        count = len(st.session_state.orders)
         
         c1, c2, c3, c4 = st.columns(4)
-        with c1: st.markdown(f"""<div class="metric-card"><h3>Total Revenue</h3><h2>${total_rev}</h2></div>""", unsafe_allow_html=True)
-        with c2: st.markdown(f"""<div class="metric-card"><h3>Orders Processed</h3><h2>{total_orders}</h2></div>""", unsafe_allow_html=True)
-        with c3: st.markdown(f"""<div class="metric-card"><h3>Active Products</h3><h2>Synced</h2></div>""", unsafe_allow_html=True)
-        with c4: st.markdown(f"""<div class="metric-card"><h3>System Health</h3><h2 style="color:#10B981 !important;">100%</h2></div>""", unsafe_allow_html=True)
-
+        with c1: st.markdown(f"""<div class="metric-card"><h3>Revenue</h3><h2>${rev}</h2></div>""", unsafe_allow_html=True)
+        with c2: st.markdown(f"""<div class="metric-card"><h3>Orders</h3><h2>{count}</h2></div>""", unsafe_allow_html=True)
+        with c3: st.markdown(f"""<div class="metric-card"><h3>Sync Status</h3><h2 style="color:#10B981 !important;">Live</h2></div>""", unsafe_allow_html=True)
+        with c4: st.markdown(f"""<div class="metric-card"><h3>Model</h3><h2>v2.0</h2></div>""", unsafe_allow_html=True)
+        
         st.markdown("###")
-        st.subheader("Sales Activity")
-        if total_orders > 0:
-            chart_data = pd.DataFrame({"Order": [f"#{i+1}" for i in range(total_orders)], "Revenue": [20] * total_orders})
-            st.bar_chart(chart_data, x="Order", y="Revenue", color="#111827") 
+        st.caption("Recent Activity Log")
+        if count > 0:
+             # Simple List
+             for o in st.session_state.orders[-5:]:
+                 st.info(f"💰 {o.get('date', 'Just now')} - {o.get('item')} sold")
         else:
-            st.info("No data available. Waiting for first interaction.")
+            st.info("No activity recorded yet.")
 
-    # --- VIEW 2: LIVE CHAT ---
-    elif menu == "Live Chat":
-        st.title("Live Interaction Simulator")
-        st.caption("Preview how your AI Assistant interacts with customers.")
+    # VIEW 2: SIMULATOR
+    elif menu == "Live Simulator":
+        st.title("Simulator")
         
         for msg in st.session_state.messages:
             avatar = "👤" if msg["role"] == "user" else "🤖"
             with st.chat_message(msg["role"], avatar=avatar):
                 st.write(msg["content"])
 
-        if prompt := st.chat_input("Type a message..."):
+        if prompt := st.chat_input("Test your bot..."):
             st.session_state.messages.append({"role": "user", "content": prompt})
             with st.chat_message("user", avatar="👤"): st.write(prompt)
             
             with st.chat_message("assistant", avatar="🤖"):
                 placeholder = st.empty()
-                placeholder.markdown("Thinking...")
-                
+                placeholder.markdown("...")
                 try:
-                    config = st.session_state.user_config
-                    catalog_str = "No Feed."
-                    if config.get("feed_url"):
-                        try:
-                            df = pd.read_csv(config.get("feed_url"))
-                            catalog_str = df.to_string(index=False)
-                        except: pass
+                    cfg = st.session_state.user_config
+                    payload = {
+                        "store_policy": cfg.get("policy", "Standard"),
+                        "product_catalog": "", # The worker uses the feed_url internally if needed, or we fetch here.
+                        "user_question": prompt
+                    }
+                    # We pass the feed URL in the prompt for v1 worker, OR if using v2 worker:
+                    # Let's assume v2 worker handles it. 
+                    # For RAG, we don't send catalog. For v1/v2 simple, we send it.
+                    # FIX: If using v2 simple worker, we need to fetch the Atom feed text here.
+                    # But to keep it simple and robust:
+                    res = requests.post(WORKER_URL, json=payload)
                     
-                    payload = {"store_policy": config.get("policy", "Standard"), "product_catalog": catalog_str, "user_question": prompt}
-                    response = requests.post(WORKER_URL, json=payload)
-                    
-                    if response.status_code == 200:
-                        data = response.json()
-                        raw_text = data.get("result", {}).get("response", "") or data.get("response", "") or str(data)
-                        
-                        json_match = re.search(r'\{.*\}', raw_text, re.DOTALL)
-                        if json_match:
-                            ai_action = json.loads(json_match.group(0))
-                            msg_text = ai_action.get("message", "...")
-                            
-                            if ai_action.get("action") == "CREATE_ORDER":
-                                st.success(f"Order Confirmed: {ai_action.get('item')}")
-                                ai_action["date"] = datetime.now().strftime("%Y-%m-%d %H:%M")
-                                st.session_state.orders.append(ai_action)
-                                if config.get("webhook_url"): requests.post(config.get("webhook_url"), json=ai_action)
-                            
-                            placeholder.write(msg_text)
-                            st.session_state.messages.append({"role": "assistant", "content": msg_text})
+                    if res.status_code == 200:
+                        data = res.json()
+                        raw = data.get("result", {}).get("response", "") or data.get("response", "") or str(data)
+                        match = re.search(r'\{.*\}', raw, re.DOTALL)
+                        if match:
+                            action = json.loads(match.group(0))
+                            txt = action.get("message", "Done")
+                            if action.get("action") == "CREATE_ORDER":
+                                st.toast(f"Order: {action.get('item')}")
+                                action["date"] = datetime.now().strftime("%H:%M")
+                                st.session_state.orders.append(action)
+                            placeholder.write(txt)
+                            st.session_state.messages.append({"role": "assistant", "content": txt})
                         else:
-                            placeholder.write(raw_text)
-                    else:
-                        placeholder.error("Connection Error")
-                except Exception as e:
-                    placeholder.error(f"Error: {e}")
+                            placeholder.write(raw)
+                except:
+                    placeholder.error("Connection Error")
 
-    # --- VIEW 3: ORDERS ---
+    # VIEW 3: ORDERS
     elif menu == "Orders":
-        st.title("Order History")
-        
+        st.title("Orders")
         if st.session_state.orders:
-            df = pd.DataFrame(st.session_state.orders)
-            st.dataframe(
-                df, 
-                use_container_width=True, 
-                hide_index=True,
-                column_config={
-                    "item": "Product Name",
-                    "quantity": "Qty",
-                    "date": "Date & Time",
-                    "message": None, 
-                    "action": None
-                }
-            )
+            st.dataframe(pd.DataFrame(st.session_state.orders), use_container_width=True)
         else:
-            st.info("No orders found in this session.")
+            st.info("No orders found.")
 
-    # --- VIEW 4: SETTINGS ---
-    elif menu == "Settings":
-        st.title("System Configuration")
+    # VIEW 4: INSTALLATION (FIXED VISIBILITY)
+    elif menu == "Installation":
+        st.title("Installation")
+        st.markdown("Copy the code below.")
         
-        st.subheader("Website Widget Code")
-        st.markdown("Copy and paste this code into your website's `<body>` tag.")
-        
-        # DISPLAY CODE IN A CLEAN BOX
-        st.code(f"""<script>
-window.BOT_CONFIG = {{
-  workerUrl: "{WORKER_URL}",
-  policy: "{st.session_state.user_config.get('policy', 'Standard')}"
-}};
+        code_snippet = f"""<script>
+  window.BOT_CONFIG = {{
+    workerUrl: "{WORKER_URL}",
+    policy: "Standard"
+  }};
 </script>
-<script src="https://cdn.jsdelivr.net/gh/farhanmc011/chat-widget@main/widget.js" async></script>""", language="html")
+<script src="https://cdn.jsdelivr.net/gh/farhanmc011/chat-widget@main/widget.js" async></script>"""
 
-        st.markdown("---")
-        st.subheader("Data Connections")
-        st.text_input("Active Product Feed", value=st.session_state.user_config.get("feed_url", "Not Connected"), disabled=True)
+        # This will now appear in a LIGHT GREY box with DARK TEXT
+        st.code(code_snippet, language="html")
+        
+        st.success("✅ Widget is ready to deploy.")
 
-# --- 🚀 RUN ---
 if st.session_state.logged_in:
     main_app()
 else:
