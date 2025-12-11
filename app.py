@@ -1,130 +1,109 @@
 import streamlit as st
 import requests
-import json
+import pandas as pd
+import io
 
 # --- CONFIGURATION ---
-# 🔴 PASTE YOUR NEW WORKER URL HERE 🔴
-WORKER_URL = "https://shop-brain.farhanmc011.workers.dev" 
+WORKER_URL = "https://shop-brain.farhanmc011.workers.dev" # Your Brain URL
 
-# --- PAGE CONFIG ---
-st.set_page_config(page_title="ShopSales Admin", page_icon="🛍️", layout="wide")
+st.set_page_config(page_title="Omni-Agent Admin", page_icon="🌐", layout="wide")
 
-st.markdown("""
-<style>
-    .order-box { 
-        padding: 1rem; 
-        background-color: #e3fcf7; 
-        border: 1px solid #008060; 
-        border-radius: 8px; 
-        margin-bottom: 10px; 
-    }
-    .stButton>button { 
-        width: 100%; 
-        border-radius: 8px; 
-        font-weight: bold; 
-        background-color: #008060; 
-        color: white; 
-    }
-</style>
-""", unsafe_allow_html=True)
-
-# --- HEADER ---
-st.title("🛍️ ShopSales: Admin Dashboard")
-st.caption("Configure your AI Agent & Get the Widget Code.")
+st.title("🌐 Omni-Agent: Central Command")
+st.caption("Sync Google Sheets & Connect to WhatsApp/Insta.")
 
 # --- TABS ---
-tab1, tab2 = st.tabs(["1. Test Simulator", "2. Get Widget Code"])
+tab1, tab2, tab3 = st.tabs(["1. Auto-Catalog (Google Sheets)", "2. Test Simulator", "3. Connect Channels"])
 
-# --- TAB 1: SIMULATOR (TESTING) ---
+# --- SESSION STATE ---
+if "catalog_data" not in st.session_state:
+    st.session_state.catalog_data = "No products loaded yet."
+
+# --- TAB 1: GOOGLE SHEETS AUTOMATION ---
 with tab1:
-    col_setup, col_chat = st.columns([1, 2])
+    st.header("📊 Live Inventory Sync")
+    st.write("Don't type manually. Just paste your Google Sheet 'Published CSV' link.")
     
-    with col_setup:
-        st.header("📦 Inventory & Rules")
-        products = st.text_area("Product Catalog", height=150, value="Red T-Shirt ($20)\nBlue Jeans ($50)\nWhite Sneakers ($80)")
-        policy = st.text_area("Store Policy", height=100, value="Shipping is free over $100. Returns 30 days.")
-        st.info("Edit these to change how the bot behaves!")
+    sheet_url = st.text_input("Paste Google Sheet CSV Link", placeholder="https://docs.google.com/spreadsheets/d/.../export?format=csv")
+    
+    if st.button("🔄 Sync Catalog Now"):
+        if sheet_url:
+            try:
+                # Automate the fetching
+                df = pd.read_csv(sheet_url)
+                # Convert to text string for the AI
+                st.session_state.catalog_data = df.to_string(index=False)
+                st.success("✅ Catalog Synced! The Bot now knows your live inventory.")
+                st.dataframe(df) # Show the client their data
+            except Exception as e:
+                st.error(f"Error reading sheet. Make sure it is public! {e}")
+        else:
+            st.warning("Paste a link first.")
 
-    with col_chat:
-        st.subheader("💬 Live Chat Preview")
+    st.subheader("Store Rules")
+    policy = st.text_area("Store Policy", height=100, value="Shipping is free over $100. Returns 30 days.")
 
-        # Session State
-        if "orders" not in st.session_state:
-            st.session_state.orders = []
-        if "messages" not in st.session_state:
-            st.session_state.messages = [{"role": "assistant", "content": "Hi! I can help with support OR take your order. Try saying 'I want the Red Shirt'."}]
-
-        # Display Chat
-        for msg in st.session_state.messages:
-            with st.chat_message(msg["role"]):
-                st.markdown(msg["content"])
-
-        # Display Orders
-        if st.session_state.orders:
-            st.markdown("### 🛒 Active Orders (Automated)")
-            for order in st.session_state.orders:
-                st.markdown(f"""
-                <div class="order-box">
-                    <b>✅ Order Created Automatically</b><br>
-                    Item: {order['item']} | Qty: {order['quantity']} | Status: <b>Processing</b>
-                </div>
-                """, unsafe_allow_html=True)
-
-        # Input
-        if prompt := st.chat_input("Customer says..."):
-            st.session_state.messages.append({"role": "user", "content": prompt})
-            with st.chat_message("user"):
-                st.markdown(prompt)
-
-            with st.spinner("AI is thinking..."):
-                try:
-                    payload = {
-                        "store_policy": policy, 
-                        "product_catalog": products,
-                        "user_question": prompt
-                    }
-                    
-                    response = requests.post(WORKER_URL, json=payload)
-                    
-                    if response.status_code == 200:
-                        data = response.json()
-                        # Clean JSON
-                        raw_json = data.get("result", {}).get("response", "") or data.get("response", "")
-                        clean_json = raw_json.replace("```json", "").replace("```", "").strip()
-                        
-                        try:
-                            ai_action = json.loads(clean_json)
-                            message_text = ai_action.get("message", "Processed.")
-                            
-                            if ai_action.get("action") == "CREATE_ORDER":
-                                new_order = {"item": ai_action.get("item"), "quantity": ai_action.get("quantity")}
-                                st.session_state.orders.append(new_order)
-                                st.balloons() 
-                            
-                            with st.chat_message("assistant"):
-                                st.markdown(message_text)
-                            st.session_state.messages.append({"role": "assistant", "content": message_text})
-                            
-                        except Exception as e:
-                            st.error(f"Bot Parsing Error: {clean_json}")
-                    else:
-                        st.error("Server Error")
-                except Exception as e:
-                    st.error(f"Connection Error: {e}")
-
-# --- TAB 2: WIDGET CODE (SELLING) ---
+# --- TAB 2: SIMULATOR ---
 with tab2:
-    st.header("🔌 Install on Website")
-    st.write("Copy this code and give it to your client (or paste in Shopify).")
+    st.subheader("💬 Test with Live Data")
     
-    widget_code = f"""
-<script>
-  window.BOT_CONFIG = {{
-    workerUrl: "{WORKER_URL}",
-    policy: "Shipping is free over $100...", 
-    products: "Red T-Shirt ($20)..."
-  }};
-</script>
-<script src="https://cdn.jsdelivr.net/gh/farhanmc011/chat-widget@main/widget.js" async></script>
-    """
-    st.code(widget_code, language="html")
+    # Initialize chat
+    if "messages" not in st.session_state:
+        st.session_state.messages = [{"role": "assistant", "content": "Hi! Check my live inventory from Google Sheets."}]
+
+    for msg in st.session_state.messages:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+
+    if prompt := st.chat_input("Ask about products in the sheet..."):
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.markdown(prompt)
+
+        with st.spinner("Checking Google Sheet..."):
+            try:
+                # SEND LIVE SHEET DATA TO BRAIN
+                payload = {
+                    "store_policy": policy, 
+                    "product_catalog": st.session_state.catalog_data, # This comes from the Sheet!
+                    "user_question": prompt
+                }
+                
+                response = requests.post(WORKER_URL, json=payload)
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    # Clean & Parse
+                    raw_json = data.get("result", {}).get("response", "") or data.get("response", "")
+                    clean_json = raw_json.replace("```json", "").replace("```", "").strip()
+                    
+                    try:
+                        import json
+                        ai_action = json.loads(clean_json)
+                        message_text = ai_action.get("message", "Processed.")
+                        
+                        if ai_action.get("action") == "CREATE_ORDER":
+                            st.balloons()
+                            st.success(f"✅ Order for {ai_action.get('item')} confirmed!")
+                        
+                        with st.chat_message("assistant"):
+                            st.markdown(message_text)
+                        st.session_state.messages.append({"role": "assistant", "content": message_text})
+                    except:
+                        st.error("Parsing Error")
+                else:
+                    st.error("Server Error")
+            except Exception as e:
+                st.error(f"Error: {e}")
+
+# --- TAB 3: OMNICHANNEL (THE BILLIONAIRE MOVE) ---
+with tab3:
+    st.header("🔗 Connect Messaging Apps")
+    st.info("To connect WhatsApp & Instagram, we use the API Endpoint below.")
+    
+    st.markdown("### Your Universal API Endpoint")
+    st.code(WORKER_URL, language="text")
+    
+    st.markdown("### How to Connect (The Strategy):")
+    st.write("1. Go to **Make.com** (Free).")
+    st.write("2. Create a Scenario: **WhatsApp Watch Messages** -> **HTTP Request (Your API)**.")
+    st.write("3. The Bot will now reply on WhatsApp automatically using the same Brain.")
