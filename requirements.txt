@@ -1,5 +1,2 @@
 streamlit
 requests
-streamlit
-requests
-fpdf
