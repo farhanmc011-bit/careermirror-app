@@ -9,78 +9,78 @@ from datetime import datetime
 # --- ⚙️ CONFIGURATION ---
 WORKER_URL = "https://shop-brain.farhanmc011.workers.dev" 
 
-# --- 🎨 PAGE CONFIG & LUXURY WHITE CSS ---
+# --- 🎨 PAGE CONFIG & HIGH-CONTRAST LUXURY CSS ---
 st.set_page_config(page_title="Client Portal", page_icon="✨", layout="wide")
 
 st.markdown("""
 <style>
-    /* 1. MAIN THEME - LUXURY WHITE */
+    /* 1. FORCE BACKGROUND WHITE */
     .stApp {
-        background-color: #F8F9FB; /* Very soft blue-grey */
-        color: #1A1A1A; /* Near Black */
+        background-color: #F8F9FB;
+    }
+
+    /* 2. FORCE ALL TEXT TO BLACK (The Fix) */
+    h1, h2, h3, h4, h5, h6, p, div, span, label, li {
+        color: #1A1A1A !important;
         font-family: 'Helvetica Neue', sans-serif;
     }
     
-    /* 2. SIDEBAR - CLEAN WHITE */
+    /* 3. SIDEBAR */
     section[data-testid="stSidebar"] {
         background-color: #FFFFFF;
-        border-right: 1px solid #E5E7EB; /* Subtle divider */
+        border-right: 1px solid #E5E7EB;
+    }
+    section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3 {
+        color: #1A1A1A !important;
     }
     
-    /* 3. METRIC CARDS - APPLE STYLE */
+    /* 4. METRIC CARDS */
     .metric-card {
         background: #FFFFFF;
         padding: 24px;
         border-radius: 16px;
-        border: 1px solid #F0F0F0;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.03); /* Soft, expensive shadow */
-        text-align: left; /* Professional alignment */
+        border: 1px solid #E5E7EB;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
         transition: transform 0.2s;
     }
     .metric-card:hover {
         transform: translateY(-2px);
-        box-shadow: 0 8px 30px rgba(0,0,0,0.06);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.08);
     }
     .metric-card h3 { 
-        color: #6B7280; /* Cool Grey */
-        font-size: 13px; 
+        color: #6B7280 !important; /* Cool Grey for Titles */
+        font-size: 13px !important; 
         text-transform: uppercase; 
         font-weight: 600; 
-        letter-spacing: 0.5px;
         margin-bottom: 8px; 
     }
     .metric-card h2 { 
-        color: #111827; /* Deep Black */
-        font-size: 32px; 
+        color: #111827 !important; /* Deep Black for Numbers */
+        font-size: 32px !important; 
         font-weight: 700; 
         margin: 0; 
     }
     
-    /* 4. BUTTONS - MINIMALIST BLACK */
+    /* 5. INPUT FIELDS (Make sure text inside is visible) */
+    .stTextInput input {
+        background-color: #FFFFFF !important;
+        color: #1A1A1A !important; /* Force Input Text Black */
+        border: 1px solid #E5E7EB;
+    }
+    
+    /* 6. BUTTONS */
     .stButton>button {
-        background-color: #000000;
-        color: white;
+        background-color: #111827 !important;
+        color: #FFFFFF !important; /* White Text on Black Button */
         border: none;
         border-radius: 8px;
-        padding: 10px 24px;
         font-weight: 600;
-        transition: all 0.2s;
     }
     .stButton>button:hover {
-        background-color: #333333;
-        color: white;
-        transform: scale(1.02);
+        background-color: #374151 !important;
     }
 
-    /* 5. INPUT FIELDS - CLEAN */
-    .stTextInput>div>div>input {
-        background-color: #FFFFFF;
-        border: 1px solid #E5E7EB;
-        border-radius: 8px;
-        color: #1A1A1A;
-    }
-
-    /* HIDE STREAMLIT BRANDING */
+    /* HIDE STREAMLIT UI */
     #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
@@ -89,16 +89,16 @@ st.markdown("""
 if "logged_in" not in st.session_state: st.session_state.logged_in = False
 if "user_config" not in st.session_state: st.session_state.user_config = {}
 if "orders" not in st.session_state: st.session_state.orders = []
-if "messages" not in st.session_state: st.session_state.messages = [{"role": "assistant", "content": "Welcome. I am ready to assist your customers."}]
+if "messages" not in st.session_state: st.session_state.messages = [{"role": "assistant", "content": "Welcome. I am ready to assist."}]
 
 # ==========================================
-# 🔐 1. LOGIN SYSTEM (Minimalist)
+# 🔐 1. LOGIN SYSTEM
 # ==========================================
 def login_page():
     c1, c2, c3 = st.columns([1, 0.8, 1])
     with c2:
         st.markdown("<br><br><br>", unsafe_allow_html=True)
-        # Clean Logo Area
+        # We use explicit HTML colors to ensure visibility
         st.markdown("<h2 style='text-align: center; color: #111827; margin-bottom: 0px;'>Client Portal</h2>", unsafe_allow_html=True)
         st.markdown("<p style='text-align: center; color: #6B7280; font-size: 14px;'>Secure Access • Enterprise Edition</p>", unsafe_allow_html=True)
         st.markdown("<br>", unsafe_allow_html=True)
@@ -106,8 +106,6 @@ def login_page():
         with st.form("login"):
             username = st.text_input("Username")
             password = st.text_input("Password", type="password")
-            
-            # Full Width Button Hack
             submitted = st.form_submit_button("Sign In →")
             
             if submitted:
@@ -123,7 +121,7 @@ def login_page():
                     st.error("System configuration error.")
 
 # ==========================================
-# 🖥️ 2. MAIN APPLICATION (The Pro View)
+# 🖥️ 2. MAIN APPLICATION
 # ==========================================
 def main_app():
     # --- SIDEBAR ---
@@ -140,7 +138,7 @@ def main_app():
             st.session_state.logged_in = False
             st.rerun()
 
-    # --- VIEW 1: OVERVIEW (Dashboard) ---
+    # --- VIEW 1: OVERVIEW ---
     if menu == "Overview":
         st.title("Performance Overview")
         st.markdown("Real-time sales and interaction metrics.")
@@ -154,17 +152,17 @@ def main_app():
         with c1: st.markdown(f"""<div class="metric-card"><h3>Total Revenue</h3><h2>${total_rev}</h2></div>""", unsafe_allow_html=True)
         with c2: st.markdown(f"""<div class="metric-card"><h3>Orders Processed</h3><h2>{total_orders}</h2></div>""", unsafe_allow_html=True)
         with c3: st.markdown(f"""<div class="metric-card"><h3>Active Products</h3><h2>Synced</h2></div>""", unsafe_allow_html=True)
-        with c4: st.markdown(f"""<div class="metric-card"><h3>System Health</h3><h2 style="color:#10B981;">100%</h2></div>""", unsafe_allow_html=True)
+        with c4: st.markdown(f"""<div class="metric-card"><h3>System Health</h3><h2 style="color:#10B981 !important;">100%</h2></div>""", unsafe_allow_html=True)
 
         st.markdown("###")
         st.subheader("Sales Activity")
         if total_orders > 0:
             chart_data = pd.DataFrame({"Order": [f"#{i+1}" for i in range(total_orders)], "Revenue": [20] * total_orders})
-            st.bar_chart(chart_data, x="Order", y="Revenue", color="#111827") # Black bars
+            st.bar_chart(chart_data, x="Order", y="Revenue", color="#111827") 
         else:
             st.info("No data available. Waiting for first interaction.")
 
-    # --- VIEW 2: LIVE CHAT (Clean Inbox) ---
+    # --- VIEW 2: LIVE CHAT ---
     elif menu == "Live Chat":
         st.title("Live Interaction Simulator")
         st.caption("Preview how your AI Assistant interacts with customers.")
@@ -184,7 +182,6 @@ def main_app():
                 placeholder.markdown("Thinking...")
                 
                 try:
-                    # Logic
                     config = st.session_state.user_config
                     catalog_str = "No Feed."
                     if config.get("feed_url"):
@@ -220,13 +217,12 @@ def main_app():
                 except Exception as e:
                     placeholder.error(f"Error: {e}")
 
-    # --- VIEW 3: ORDERS (Table View) ---
+    # --- VIEW 3: ORDERS ---
     elif menu == "Orders":
         st.title("Order History")
         
         if st.session_state.orders:
             df = pd.DataFrame(st.session_state.orders)
-            # Clean Table
             st.dataframe(
                 df, 
                 use_container_width=True, 
@@ -235,14 +231,14 @@ def main_app():
                     "item": "Product Name",
                     "quantity": "Qty",
                     "date": "Date & Time",
-                    "message": None, # Hide internal message
-                    "action": None   # Hide internal action code
+                    "message": None, 
+                    "action": None
                 }
             )
         else:
             st.info("No orders found in this session.")
 
-    # --- VIEW 4: SETTINGS (Integration) ---
+    # --- VIEW 4: SETTINGS ---
     elif menu == "Settings":
         st.title("System Configuration")
         
@@ -259,7 +255,6 @@ window.BOT_CONFIG = {{
         st.markdown("---")
         st.subheader("Data Connections")
         st.text_input("Active Product Feed", value=st.session_state.user_config.get("feed_url", "Not Connected"), disabled=True)
-        st.caption("Managed by Administrator")
 
 # --- 🚀 RUN ---
 if st.session_state.logged_in:
