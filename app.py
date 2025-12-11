@@ -3,117 +3,45 @@ import requests
 import json
 
 # --- CONFIGURATION ---
-# Your New Brain URL (I pasted it here for you)
-WORKER_URL = "https://llm-chat-app-template.farhanmc011.workers.dev"
+WORKER_URL = "https://llm-chat-app-template.farhanmc011.workers.dev" # Your Brain
 
-# --- PAGE CONFIG ---
-st.set_page_config(page_title="ShopSales AI", page_icon="🛍️", layout="wide")
+st.set_page_config(page_title="ShopSales Admin", page_icon="⚙️", layout="wide")
 
-st.markdown("""
-<style>
-    .order-box { 
-        padding: 1rem; 
-        background-color: #e3fcf7; 
-        border: 1px solid #008060; 
-        border-radius: 8px; 
-        margin-bottom: 10px; 
-    }
-    .stButton>button { 
-        width: 100%; 
-        border-radius: 8px; 
-        font-weight: bold; 
-        background-color: #008060; 
-        color: white; 
-    }
-</style>
-""", unsafe_allow_html=True)
+st.title("⚙️ ShopSales: Admin Dashboard")
+st.caption("Configure your bot and put it on your store.")
 
-# --- HEADER ---
-st.title("🛍️ ShopSales AI")
-st.caption("The AI Agent that Support AND Sells.")
+# --- TABS ---
+tab1, tab2 = st.tabs(["1. Train Your Bot", "2. Get Widget Code"])
 
-# --- SIDEBAR (STORE DATABASE) ---
-with st.sidebar:
-    st.header("📦 Live Inventory")
-    # Simulate a product database - You can edit this later!
-    products = st.text_area("Product Catalog", height=150, value="Red T-Shirt ($20)\nBlue Jeans ($50)\nWhite Sneakers ($80)")
+with tab1:
+    st.header("🧠 Knowledge Base")
+    st.write("Teach your bot about your store.")
     
-    st.header("⚙️ Store Rules")
+    products = st.text_area("Product Catalog", height=150, value="Red T-Shirt ($20)\nBlue Jeans ($50)")
     policy = st.text_area("Store Policy", height=100, value="Shipping is free over $100. Returns 30 days.")
+    
+    if st.button("Save Training Data"):
+        # In a real SaaS, this would save to a database. 
+        # For MVP, we just show success.
+        st.success("Brain Updated! Now go to Tab 2.")
 
-# --- CHAT INTERFACE ---
-st.subheader("💬 Customer Chat Simulator")
-
-# Session State for Orders & Messages
-if "orders" not in st.session_state:
-    st.session_state.orders = []
-if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "assistant", "content": "Hi! I can help with support OR take your order. Try saying 'I want the Red Shirt'."}]
-
-# Display Chat History
-for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]):
-        st.markdown(msg["content"])
-
-# Display Created Orders (The Automation)
-if st.session_state.orders:
-    st.markdown("### 🛒 Active Orders (Automated)")
-    for order in st.session_state.orders:
-        st.markdown(f"""
-        <div class="order-box">
-            <b>✅ Order Created Automatically</b><br>
-            Item: {order['item']} | Qty: {order['quantity']} | Status: <b>Processing</b>
-        </div>
-        """, unsafe_allow_html=True)
-
-# User Input
-if prompt := st.chat_input("Customer says..."):
-    # 1. Add User Message
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
-
-    # 2. Get AI Response
-    with st.spinner("AI is checking inventory..."):
-        try:
-            payload = {
-                "store_policy": policy, 
-                "product_catalog": products,
-                "user_question": prompt
-            }
-            
-            response = requests.post(WORKER_URL, json=payload)
-            
-            if response.status_code == 200:
-                # Parse the JSON response from Cloudflare
-                data = response.json()
-                
-                # Logic to clean up Llama output (it sometimes adds markdown wrappers)
-                raw_json = data.get("result", {}).get("response", "") or data.get("response", "")
-                clean_json = raw_json.replace("```json", "").replace("```", "").strip()
-                
-                try:
-                    # Convert text to JSON object
-                    ai_action = json.loads(clean_json)
-                    
-                    # Extract the message to show the user
-                    message_text = ai_action.get("message", "Processed.")
-                    
-                    # CHECK: Did the AI make a sale?
-                    if ai_action.get("action") == "CREATE_ORDER":
-                        # AUTOMATION TRIGGERS HERE
-                        new_order = {"item": ai_action.get("item"), "quantity": ai_action.get("quantity")}
-                        st.session_state.orders.append(new_order)
-                        st.balloons() # Visual celebration!
-                    
-                    # Display Bot Message
-                    with st.chat_message("assistant"):
-                        st.markdown(message_text)
-                    st.session_state.messages.append({"role": "assistant", "content": message_text})
-                    
-                except Exception as e:
-                    st.error(f"Bot Parsing Error: {clean_json}")
-            else:
-                st.error("Server Error: Check your URL")
-        except Exception as e:
-            st.error(f"Connection Error: {e}")
+with tab2:
+    st.header("🔌 Connect to Your Store")
+    st.write("Copy this code and paste it into your Shopify/Wix/WordPress 'Header' or 'Footer' section.")
+    
+    # THE MAGIC SCRIPT
+    # This script creates a chat bubble that talks to YOUR Cloudflare Worker
+    widget_code = f"""
+<script>
+  window.BOT_CONFIG = {{
+    workerUrl: "{WORKER_URL}",
+    policy: `{policy}`, 
+    products: `{products}`
+  }};
+</script>
+<script src="https://cdn.jsdelivr.net/gh/farhanmc011/chat-widget@main/widget.js" async></script>
+    """
+    
+    st.code(widget_code, language="html")
+    
+    st.info("💡 Once you paste this, the 'ShopSales' bubble will appear on your site instantly.")
