@@ -3,13 +3,12 @@ import requests
 import pandas as pd
 import json
 import re
-import time
 from datetime import datetime
 
 # --- ⚙️ CONFIGURATION ---
 WORKER_URL = "https://shop-brain.farhanmc011.workers.dev" 
 
-# --- 🎨 PAGE CONFIG & HIGH-CONTRAST LUXURY CSS ---
+# --- 🎨 PAGE CONFIG & FINAL LUXURY CSS ---
 st.set_page_config(page_title="Client Portal", page_icon="✨", layout="wide")
 
 st.markdown("""
@@ -19,22 +18,34 @@ st.markdown("""
         background-color: #F8F9FB;
     }
 
-    /* 2. FORCE ALL TEXT TO BLACK (The Fix) */
-    h1, h2, h3, h4, h5, h6, p, div, span, label, li {
+    /* 2. FORCE MAIN TEXT TO BLACK */
+    /* We removed 'span' and 'div' from this list to fix the Code Block issue */
+    h1, h2, h3, h4, h5, h6, p, label, li, .stMarkdown {
         color: #1A1A1A !important;
         font-family: 'Helvetica Neue', sans-serif;
     }
     
-    /* 3. SIDEBAR */
+    /* 3. FIX CODE BLOCK VISIBILITY */
+    /* This ensures code looks like a code editor (Dark bg, Light text) */
+    .stCodeBlock {
+        border: 1px solid #E5E7EB;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    }
+    code {
+        color: #E0E0E0 !important; /* Force code text to be light */
+    }
+    
+    /* 4. SIDEBAR */
     section[data-testid="stSidebar"] {
         background-color: #FFFFFF;
         border-right: 1px solid #E5E7EB;
     }
-    section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3 {
+    section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3, section[data-testid="stSidebar"] p {
         color: #1A1A1A !important;
     }
     
-    /* 4. METRIC CARDS */
+    /* 5. METRIC CARDS */
     .metric-card {
         background: #FFFFFF;
         padding: 24px;
@@ -48,30 +59,30 @@ st.markdown("""
         box-shadow: 0 8px 20px rgba(0,0,0,0.08);
     }
     .metric-card h3 { 
-        color: #6B7280 !important; /* Cool Grey for Titles */
+        color: #6B7280 !important;
         font-size: 13px !important; 
         text-transform: uppercase; 
         font-weight: 600; 
         margin-bottom: 8px; 
     }
     .metric-card h2 { 
-        color: #111827 !important; /* Deep Black for Numbers */
+        color: #111827 !important;
         font-size: 32px !important; 
         font-weight: 700; 
         margin: 0; 
     }
     
-    /* 5. INPUT FIELDS (Make sure text inside is visible) */
+    /* 6. INPUT FIELDS */
     .stTextInput input {
         background-color: #FFFFFF !important;
-        color: #1A1A1A !important; /* Force Input Text Black */
+        color: #1A1A1A !important;
         border: 1px solid #E5E7EB;
     }
     
-    /* 6. BUTTONS */
+    /* 7. BUTTONS */
     .stButton>button {
         background-color: #111827 !important;
-        color: #FFFFFF !important; /* White Text on Black Button */
+        color: #FFFFFF !important;
         border: none;
         border-radius: 8px;
         font-weight: 600;
@@ -98,7 +109,6 @@ def login_page():
     c1, c2, c3 = st.columns([1, 0.8, 1])
     with c2:
         st.markdown("<br><br><br>", unsafe_allow_html=True)
-        # We use explicit HTML colors to ensure visibility
         st.markdown("<h2 style='text-align: center; color: #111827; margin-bottom: 0px;'>Client Portal</h2>", unsafe_allow_html=True)
         st.markdown("<p style='text-align: center; color: #6B7280; font-size: 14px;'>Secure Access • Enterprise Edition</p>", unsafe_allow_html=True)
         st.markdown("<br>", unsafe_allow_html=True)
@@ -130,7 +140,6 @@ def main_app():
         st.caption(f"Account: {st.session_state.user_config.get('name')}")
         st.markdown("---")
         
-        # Navigation
         menu = st.radio("Navigate", ["Overview", "Live Chat", "Orders", "Settings"], label_visibility="collapsed")
         
         st.markdown("---")
@@ -144,7 +153,6 @@ def main_app():
         st.markdown("Real-time sales and interaction metrics.")
         st.markdown("<br>", unsafe_allow_html=True)
         
-        # Metrics
         total_rev = sum([o.get('quantity', 1) * 20 for o in st.session_state.orders])
         total_orders = len(st.session_state.orders)
         
@@ -167,7 +175,6 @@ def main_app():
         st.title("Live Interaction Simulator")
         st.caption("Preview how your AI Assistant interacts with customers.")
         
-        # Clean Chat UI
         for msg in st.session_state.messages:
             avatar = "👤" if msg["role"] == "user" else "🤖"
             with st.chat_message(msg["role"], avatar=avatar):
@@ -244,6 +251,8 @@ def main_app():
         
         st.subheader("Website Widget Code")
         st.markdown("Copy and paste this code into your website's `<body>` tag.")
+        
+        # DISPLAY CODE IN A CLEAN BOX
         st.code(f"""<script>
 window.BOT_CONFIG = {{
   workerUrl: "{WORKER_URL}",
