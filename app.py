@@ -12,25 +12,33 @@ st.set_page_config(page_title="Omni-Agent", page_icon="🛍️", layout="wide")
 # --- CSS FOR CLEAN LOOK ---
 st.markdown("""
 <style>
+    /* Force text inside the white box to be BLACK so it is visible */
     .metric-box {
-        background-color: #f0f2f6;
+        background-color: #ffffff;
         padding: 20px;
         border-radius: 10px;
         border-left: 5px solid #00cc66;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         text-align: center;
     }
-    .status-badge {
-        background-color: #d1fae5;
-        color: #065f46;
-        padding: 5px 10px;
-        border-radius: 15px;
-        font-weight: bold;
-        font-size: 12px;
+    .metric-box h3 {
+        color: #666666 !important; /* Grey Title */
+        margin: 0;
+        font-size: 16px;
     }
-    .stButton>button { width: 100%; border-radius: 8px; font-weight: bold; }
+    .metric-box h2 {
+        color: #000000 !important; /* Pure Black Numbers */
+        margin: 0;
+        font-size: 28px;
+        font-weight: bold;
+    }
+    .stButton>button { 
+        width: 100%; 
+        border-radius: 8px; 
+        font-weight: bold; 
+    }
 </style>
 """, unsafe_allow_html=True)
-
 # --- SESSION STATE ---
 if "catalog_data" not in st.session_state:
     st.session_state.catalog_data = "No products loaded."
