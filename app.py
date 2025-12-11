@@ -1,70 +1,74 @@
 import streamlit as st
 import requests
 import pandas as pd
-import io
+import json
 
 # --- CONFIGURATION ---
-WORKER_URL = "https://shop-brain.farhanmc011.workers.dev" # Your Brain URL
+# 🔴 PASTE YOUR WORKER URL HERE (The one ending in .workers.dev)
+WORKER_URL = "https://shop-brain.farhanmc011.workers.dev" 
 
-st.set_page_config(page_title="Omni-Agent Admin", page_icon="🌐", layout="wide")
+# --- PAGE CONFIG ---
+st.set_page_config(page_title="Omni-Agent Admin", page_icon="🛍️", layout="wide")
 
-st.title("🌐 Omni-Agent: Central Command")
-st.caption("Sync Google Sheets & Connect to WhatsApp/Insta.")
+st.title("🛍️ Omni-Agent: Auto-Pilot Mode")
+st.caption("Live Store Sync & Automated Fulfillment.")
 
 # --- TABS ---
-tab1, tab2, tab3 = st.tabs(["1. Auto-Catalog (Google Sheets)", "2. Test Simulator", "3. Connect Channels"])
+tab1, tab2, tab3 = st.tabs(["1. Auto-Sync (Live Feed)", "2. Test Simulator", "3. Order Fulfillment"])
 
 # --- SESSION STATE ---
 if "catalog_data" not in st.session_state:
     st.session_state.catalog_data = "No products loaded yet."
+if "orders" not in st.session_state:
+    st.session_state.orders = []
 
-# --- TAB 1: GOOGLE SHEETS AUTOMATION ---
+# --- TAB 1: THE LAZY SYNC ---
 with tab1:
-    st.header("📊 Live Inventory Sync")
-    st.write("Don't type manually. Just paste your Google Sheet 'Published CSV' link.")
+    st.header("🔄 Live Store Sync")
+    st.info("💡 Strategy: Ask the client for their 'Facebook/Google Shopping Feed URL'. Every Shopify store has one.")
     
-    sheet_url = st.text_input("Paste Google Sheet CSV Link", placeholder="https://docs.google.com/spreadsheets/d/.../export?format=csv")
+    # Pre-filled with a dummy CSV for testing
+    feed_url = st.text_input("Paste Live Product Feed URL (CSV)", value="https://raw.githubusercontent.com/farhanmc011/chat-widget/main/demo_products.csv")
     
-    if st.button("🔄 Sync Catalog Now"):
-        if sheet_url:
-            try:
-                # Automate the fetching
-                df = pd.read_csv(sheet_url)
-                # Convert to text string for the AI
-                st.session_state.catalog_data = df.to_string(index=False)
-                st.success("✅ Catalog Synced! The Bot now knows your live inventory.")
-                st.dataframe(df) # Show the client their data
-            except Exception as e:
-                st.error(f"Error reading sheet. Make sure it is public! {e}")
+    if st.button("🔗 Connect Live Feed"):
+        if feed_url:
+            with st.spinner("Fetching live data from store..."):
+                try:
+                    # Read the CSV Feed
+                    df = pd.read_csv(feed_url)
+                    # Convert to string for the AI Brain
+                    st.session_state.catalog_data = df.to_string(index=False)
+                    st.success("✅ Connected! The AI will now check this link before every answer.")
+                    st.dataframe(df) # Show the client their data
+                except Exception as e:
+                    st.error(f"Could not read feed. Ensure it's a direct CSV link. Error: {e}")
         else:
-            st.warning("Paste a link first.")
+            st.warning("Paste the link first.")
 
     st.subheader("Store Rules")
     policy = st.text_area("Store Policy", height=100, value="Shipping is free over $100. Returns 30 days.")
 
 # --- TAB 2: SIMULATOR ---
 with tab2:
-    st.subheader("💬 Test with Live Data")
+    st.subheader("💬 Test the Brain")
     
-    # Initialize chat
     if "messages" not in st.session_state:
-        st.session_state.messages = [{"role": "assistant", "content": "Hi! Check my live inventory from Google Sheets."}]
+        st.session_state.messages = [{"role": "assistant", "content": "Hi! I'm synced with your live store."}]
 
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-    if prompt := st.chat_input("Ask about products in the sheet..."):
+    if prompt := st.chat_input("Ask about a product..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
 
-        with st.spinner("Checking Google Sheet..."):
+        with st.spinner("AI is checking live feed..."):
             try:
-                # SEND LIVE SHEET DATA TO BRAIN
                 payload = {
                     "store_policy": policy, 
-                    "product_catalog": st.session_state.catalog_data, # This comes from the Sheet!
+                    "product_catalog": st.session_state.catalog_data,
                     "user_question": prompt
                 }
                 
@@ -72,38 +76,56 @@ with tab2:
                 
                 if response.status_code == 200:
                     data = response.json()
-                    # Clean & Parse
+                    # Clean JSON output from Llama
                     raw_json = data.get("result", {}).get("response", "") or data.get("response", "")
                     clean_json = raw_json.replace("```json", "").replace("```", "").strip()
                     
                     try:
-                        import json
                         ai_action = json.loads(clean_json)
                         message_text = ai_action.get("message", "Processed.")
                         
+                        # IF AI SELLS SOMETHING:
                         if ai_action.get("action") == "CREATE_ORDER":
                             st.balloons()
-                            st.success(f"✅ Order for {ai_action.get('item')} confirmed!")
+                            st.success(f"✅ AI generated ORDER SIGNAL for: {ai_action.get('item')}")
+                            st.info("ℹ️ Sending this signal to Tab 3 (Make.com)...")
+                            # Save to session for demo
+                            st.session_state.orders.append(ai_action)
                         
                         with st.chat_message("assistant"):
                             st.markdown(message_text)
                         st.session_state.messages.append({"role": "assistant", "content": message_text})
                     except:
-                        st.error("Parsing Error")
+                        st.error(f"Parsing Error: {clean_json}")
                 else:
                     st.error("Server Error")
             except Exception as e:
                 st.error(f"Error: {e}")
 
-# --- TAB 3: OMNICHANNEL (THE BILLIONAIRE MOVE) ---
+# --- TAB 3: THE REAL ORDER SETUP ---
 with tab3:
-    st.header("🔗 Connect Messaging Apps")
-    st.info("To connect WhatsApp & Instagram, we use the API Endpoint below.")
+    st.header("🚚 Order Fulfillment (Make.com)")
+    st.write("This is where we turn the 'Signal' into a 'Shipment'.")
     
-    st.markdown("### Your Universal API Endpoint")
-    st.code(WORKER_URL, language="text")
+    st.markdown("### The Workflow:")
+    st.info("User Buys -> AI Creates JSON -> Sends to Webhook -> Make.com -> **Create Shopify Order**")
+
+    webhook_url = st.text_input("Make.com Webhook URL", placeholder="https://hook.us1.make.com/...")
     
-    st.markdown("### How to Connect (The Strategy):")
-    st.write("1. Go to **Make.com** (Free).")
-    st.write("2. Create a Scenario: **WhatsApp Watch Messages** -> **HTTP Request (Your API)**.")
-    st.write("3. The Bot will now reply on WhatsApp automatically using the same Brain.")
+    st.markdown("### Test Connection")
+    if st.button("🔴 Send Test Order to Warehouse"):
+        if webhook_url:
+            try:
+                # Send a dummy order to test the connection
+                test_order = {"action": "TEST", "item": "Test Product", "price": 0, "customer": "Test User"}
+                requests.post(webhook_url, json=test_order)
+                st.success("✅ Signal Sent! Check your Make.com history.")
+            except:
+                st.error("Connection Failed.")
+        else:
+            st.warning("Enter a Webhook URL first.")
+            
+    # Show automated orders log
+    if st.session_state.orders:
+        st.write("Recent AI Orders:")
+        st.json(st.session_state.orders)
